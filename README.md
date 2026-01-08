@@ -6,7 +6,7 @@ End-to-end e-commerce customer, cohort, segmentation, and revenue analysis using
 This repository is **Work in Progress**. The BigQuery analytical pipeline (Steps 01–06) is implemented and reproducible. The next deliverables are the Tableau Public dashboard and a final executive narrative (insights + recommendations).
 
 ## Overview
-This project simulates a realistic analytics workflow commonly used in data teams: ingesting raw transactional data, profiling data quality, creating a clean analytical layer, engineering customer features, and generating business-ready tables for segmentation, retention (cohorts), and revenue/LTV analysis.
+This project follows a realistic analytics workflow commonly used in data teams: ingesting raw transactional data, profiling data quality, creating a clean analytical layer, engineering customer features, and generating business-ready tables for segmentation (RFM), retention (cohorts), and revenue/LTV analysis.
 
 All transformations are performed in BigQuery using Standard SQL. The repository is structured so the analysis is reproducible and easy to review.
 
@@ -17,7 +17,7 @@ All transformations are performed in BigQuery using Standard SQL. The repository
   - Recency, purchase frequency, historical revenue (LTV proxy), average order value.
 - Evaluate retention and revenue performance over time through cohort analysis.
 - Segment customers using an RFM framework for CRM/retention targeting.
-- Quantify revenue concentration and value tiers (Pareto, top customer segments).
+- Quantify revenue concentration and customer value tiers.
 - Provide BI-ready tables for Tableau dashboards.
 
 ## Dataset
@@ -41,6 +41,7 @@ The dataset contains missing values, returns (negative quantities), and inconsis
 - GitHub (versioning + documentation)
 
 ## Repository Structure
+
 ecommerce-customer-revenue-analysis/
 ├── sql/
 │ ├── 01_data_exploration.sql
@@ -49,19 +50,30 @@ ecommerce-customer-revenue-analysis/
 │ ├── 04_cohort_analysis.sql
 │ ├── 05_rfm_segmentation.sql
 │ ├── 06_revenue_ltv.sql
+├── dashboards/
+│ └── tableau_link.md
 └── README.md
+
 
 ## Data Model (BigQuery Tables)
 - `ecommerce.online_retail_raw`  
   Raw ingestion layer (no transformations).
+
 - `ecommerce.online_retail_clean`  
   Clean analytical layer after applying business rules.
+
 - `ecommerce.customer_metrics`  
   One row per customer with engineered metrics (recency, frequency, monetary).
+
 - `ecommerce.cohort_analysis`  
-  Cohort performance table by acquisition month and months since first purchase.
+  Cohort performance table by acquisition month and months since first purchase (active customers and revenue).
+
 - `ecommerce.customer_rfm`  
   Customer-level RFM scores and segments.
+
+- `ecommerce.rfm_segment_summary`  
+  Segment-level KPI summary (customers, revenue, avg LTV, avg orders, avg recency) for reporting/Tableau.
+
 - Step 06 business-ready tables:
   - `ecommerce.monthly_revenue_kpis`
   - `ecommerce.customer_value_tiers`
@@ -143,13 +155,12 @@ Customers are scored into quintiles using `NTILE(5)`:
 
 Output: `ecommerce.customer_rfm`
 
-Segments include:
-- Champions, Loyal Customers, Potential Loyalists, At Risk, Lost, Others
+In addition to the customer-level segmentation table, a segment-level summary table (`ecommerce.rfm_segment_summary`) is created to support BI reporting and Tableau visualizations.
 
 ### 7) Revenue & LTV Analysis (`06_revenue_ltv.sql`)
 This step creates business-ready tables used for reporting and BI:
 - Monthly revenue KPIs (revenue, orders, AOV, ARPU)
-- Customer value tiers (Top 1/5/20% and wholesale-like flag)
+- Customer value tiers (Top 1/5/20% customers and wholesale-like flag)
 - Revenue concentration (Pareto / cumulative revenue share)
 - RFM segment KPIs (revenue share, avg LTV, avg orders, avg recency)
 - Cohort revenue summary (cohort size and revenue per customer)
@@ -178,9 +189,14 @@ This step creates business-ready tables used for reporting and BI:
    - `06_revenue_ltv.sql`
 
 ## Tableau (Planned)
-A Tableau Public dashboard will be connected to the Step 06 tables (monthly KPIs, cohort performance, and RFM KPIs) to visualize retention, segmentation, and revenue concentration.
+A Tableau Public dashboard will be connected to the Step 06 tables (monthly KPIs, cohort performance, RFM summary/KPIs, and revenue concentration) to visualize retention, segmentation, and revenue performance.
+
+Add the published Tableau link to:
+- `dashboards/tableau_link.md`
+- and this README once available.
 
 ## Next Deliverables
-- Tableau Public dashboard (retention heatmap, revenue trends, RFM segment KPIs)
+- Tableau Public dashboard (retention heatmap, revenue trends, RFM segment KPIs, Pareto curve)
 - Final executive summary with insights and recommended retention/reactivation actions
+
 
