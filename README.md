@@ -1,183 +1,186 @@
-# ecommerce-customer-revenue-analysis
-End-to-end e-commerce customer, cohort, and revenue analysis using SQL (BigQuery) and Tableau.
-----------------------------
+# Ecommerce Customer Revenue Analysis (Work in Progress)
 
-# E-commerce Customer & Revenue Analysis
+End-to-end e-commerce customer, cohort, segmentation, and revenue analysis using SQL (Google BigQuery) and Tableau Public.
 
-This project analyzes customer behavior, retention, segmentation, and revenue performance for an e-commerce business using SQL (BigQuery) and Tableau Public.
+## Project Status
+This repository is **Work in Progress**. The BigQuery analytical pipeline (Steps 01–06) is implemented and reproducible. The next deliverables are the Tableau Public dashboard and a final executive narrative (insights + recommendations).
 
-Work in progress.
+## Overview
+This project simulates a realistic analytics workflow commonly used in data teams: ingesting raw transactional data, profiling data quality, creating a clean analytical layer, engineering customer features, and generating business-ready tables for segmentation, retention (cohorts), and revenue/LTV analysis.
 
----------------------------
-# 🛒 E-commerce Customer Analysis  
-**SQL · BigQuery · Data Cleaning · Customer Analytics**
+All transformations are performed in BigQuery using Standard SQL. The repository is structured so the analysis is reproducible and easy to review.
 
-## 📌 Project Overview
+## Business Objectives
+- Assess the structure and quality of raw transactional data.
+- Produce a clean dataset suitable for customer-level analytics.
+- Build customer metrics to support decision-making:
+  - Recency, purchase frequency, historical revenue (LTV proxy), average order value.
+- Evaluate retention and revenue performance over time through cohort analysis.
+- Segment customers using an RFM framework for CRM/retention targeting.
+- Quantify revenue concentration and value tiers (Pareto, top customer segments).
+- Provide BI-ready tables for Tableau dashboards.
 
-This project focuses on analyzing customer purchase behavior using a real-world **e-commerce transaction dataset**.  
-The goal is to move from raw transactional data to a **clean, analysis-ready customer dataset**, following a realistic workflow commonly used in data teams.
+## Dataset
+- Source: Online Retail Dataset (Kaggle)
+- Size: ~542k transaction records
+- Key fields:
+  - `InvoiceNo` (transaction identifier)
+  - `StockCode`, `Description` (product info)
+  - `Quantity` (units; includes returns)
+  - `InvoiceDate` (timestamp)
+  - `UnitPrice`
+  - `CustomerID` (customer identifier; missing in a substantial portion of rows)
+  - `Country`
 
-The analysis is performed entirely in **Google BigQuery (SQL)**, emphasizing data cleaning, feature engineering, and business-driven decision making.
+The dataset contains missing values, returns (negative quantities), and inconsistent formatting typical of production-like data.
 
----
+## Tech Stack
+- SQL (BigQuery Standard SQL)
+- Google BigQuery (storage + compute)
+- Tableau Public (visualization)
+- GitHub (versioning + documentation)
 
-## 🎯 Business Objectives
-
-- Understand the structure and quality of raw transactional data
-- Prepare a clean dataset suitable for customer-level analysis
-- Build key customer metrics such as:
-  - total revenue
-  - order frequency
-  - customer lifespan
-  - recency
-- Lay the foundation for advanced analyses such as:
-  - RFM segmentation
-  - cohort analysis
-  - customer lifetime value (LTV)
-
----
-
-## 🗂 Dataset Description
-
-**Source:** Online Retail Dataset (Kaggle)  
-**Size:** ~542k transaction records
-
-### Main columns:
-- `InvoiceNo` – Transaction identifier  
-- `StockCode` – Product code  
-- `Description` – Product description  
-- `Quantity` – Number of units purchased  
-- `InvoiceDate` – Transaction date and time  
-- `UnitPrice` – Price per unit  
-- `CustomerID` – Customer identifier  
-- `Country` – Customer country  
-
-The dataset contains missing values, negative quantities (returns), and other inconsistencies typical of real production data.
-
----
-
-## 🛠️ Tech Stack
-
-- **SQL (Standard SQL)**
-- **Google BigQuery**
-- **GitHub** (project documentation & versioning)
-
----
-
-## 📁 Project Structure
-
-ecommerce-customer-analysis/
-│
+## Repository Structure
+ecommerce-customer-revenue-analysis/
 ├── sql/
 │ ├── 01_data_exploration.sql
 │ ├── 02_data_cleaning.sql
-│ └── 03_feature_engineering.sql
-│
+│ ├── 03_customer_metrics.sql
+│ ├── 04_cohort_analysis.sql
+│ ├── 05_rfm_segmentation.sql
+│ ├── 06_revenue_ltv.sql
 └── README.md
 
+## Data Model (BigQuery Tables)
+- `ecommerce.online_retail_raw`  
+  Raw ingestion layer (no transformations).
+- `ecommerce.online_retail_clean`  
+  Clean analytical layer after applying business rules.
+- `ecommerce.customer_metrics`  
+  One row per customer with engineered metrics (recency, frequency, monetary).
+- `ecommerce.cohort_analysis`  
+  Cohort performance table by acquisition month and months since first purchase.
+- `ecommerce.customer_rfm`  
+  Customer-level RFM scores and segments.
+- Step 06 business-ready tables:
+  - `ecommerce.monthly_revenue_kpis`
+  - `ecommerce.customer_value_tiers`
+  - `ecommerce.revenue_pareto`
+  - `ecommerce.rfm_segment_kpis`
+  - `ecommerce.cohort_revenue_summary`
 
----
+## Workflow and Methodology
 
-## 🔄 Workflow & Methodology
+### 1) Data Ingestion (Raw Layer)
+- The dataset was converted from Excel to CSV and loaded into BigQuery as:
+  - `ecommerce.online_retail_raw`
+- Raw data is preserved without modification to maintain lineage and reproducibility.
 
-### 1️⃣ Data Ingestion (Raw Layer)
+### 2) Data Exploration (`01_data_exploration.sql`)
+Initial profiling to understand data quality and suitability for customer analytics.
 
-- The dataset was converted from Excel to CSV and loaded into **BigQuery** as  
-  `ecommerce.online_retail_raw`
-- Schema was **auto-detected** to reflect a realistic ingestion process
-- Raw data was preserved without modifications
+Key findings:
+- Total rows: 541,909
+- Missing `CustomerID`: 135,080 rows (~25%)
+- Invalid `Quantity` or `UnitPrice` (≤ 0): 10,624 rows (~2%)
 
----
+Implications:
+- Rows without `CustomerID` cannot be used for customer-level metrics.
+- Negative quantities represent returns and distort revenue if not handled.
+- Non-positive prices distort revenue calculations.
 
-### 2️⃣ Data Exploration (`01_data_exploration.sql`)
+### 3) Data Cleaning (`02_data_cleaning.sql`)
+Creation of a clean analytical table:
+- Output: `ecommerce.online_retail_clean`
 
-Initial checks were performed to understand data quality and limitations.
+Rules applied:
+- Exclude rows with `CustomerID IS NULL`
+- Remove returns: `Quantity <= 0`
+- Remove invalid pricing: `UnitPrice <= 0`
+- Create `Revenue = Quantity * UnitPrice`
+- Use safe casting to prevent query failures
 
-**Key findings:**
-- **Total rows:** 541,909  
-- **Customers with missing CustomerID:** 135,080 (~25%)  
-- **Rows with invalid Quantity or UnitPrice:** 10,624 (~2%)
+Results after cleaning:
+- Clean rows: 397,884
+- Unique customers: 4,338
+- Total revenue (historical, cleaned): £820,333,393
 
-**Key observations:**
-- Transactions without `CustomerID` cannot be used for customer-level analysis
-- Negative quantities represent returns
-- Zero or negative prices distort revenue metrics
+### 4) Customer Metrics / Feature Engineering (`03_customer_metrics.sql`)
+Creation of customer-level features for downstream analysis:
+- Output: `ecommerce.customer_metrics`
 
----
-
-### 3️⃣ Data Cleaning (`02_data_cleaning.sql`)
-
-A clean analytical table was created:  
-`ecommerce.online_retail_clean`
-
-**Cleaning rules applied:**
-- Excluded rows with `CustomerID IS NULL`
-- Removed returns (`Quantity <= 0`)
-- Removed invalid pricing (`UnitPrice <= 0`)
-- Casted numeric fields safely using `SAFE_CAST`
-- Created a business metric: `Revenue = Quantity * UnitPrice`
-
-**Results after cleaning:**
-- **Clean rows:** 397,884  
-- **Unique customers:** 4,338  
-- **Total revenue:** £820,333,393  
-
----
-
-### 4️⃣ Feature Engineering (`03_feature_engineering.sql`)
-
-Customer-level metrics were created in the table:  
-`ecommerce.customer_metrics`
-
-**Metrics engineered per customer:**
-- Customer lifespan (days)
-- Recency (days since last purchase)
+Metrics per customer:
+- Customer lifespan (days between first and last purchase)
+- Recency (days since last purchase, relative to dataset end date)
 - Total number of orders
-- Total revenue (LTV proxy)
+- Total revenue (historical LTV proxy)
 - Average order value
 
-**Aggregated results:**
-- **Customers:** 4,338  
-- **Average LTV (historical):** £189,104  
-- **Average orders per customer:** 4.27  
+Aggregate checks:
+- Customers: 4,338
+- Average historical LTV proxy: £189,104
+- Average orders per customer: 4.27
 
----
+### 5) Cohort Analysis (`04_cohort_analysis.sql`)
+Cohorts are defined by the customer's first purchase month (`cohort_month`), then tracked over time using `months_since_first_purchase`.
 
-## 🧠 Key Analytical Decisions
+Output: `ecommerce.cohort_analysis`
 
-- Raw data was not modified directly; all transformations were applied to derived tables
-- Customers without identification were excluded only at the analysis stage
-- Returns were excluded to avoid distorting revenue-based metrics
-- LTV is treated as a historical proxy, not a predictive model
+Metrics by cohort and month offset:
+- Active customers
+- Total revenue
 
----
+Validation highlights:
+- Cohorts span Dec 2010 through Dec 2011.
+- The acquisition peak occurs in Dec 2010 (largest cohort size).
+- The final cohort is smaller because the dataset ends early in Dec 2011.
 
-## ⚠️ Challenges Encountered
+### 6) RFM Segmentation (`05_rfm_segmentation.sql`)
+Customers are scored into quintiles using `NTILE(5)`:
+- Recency (lower is better)
+- Frequency (higher is better)
+- Monetary (higher is better)
 
-- BigQuery ingestion errors due to malformed CSV rows
-- Inconsistent date formats and quoted newlines in product descriptions
-- Schema mismatches during auto-detection
+Output: `ecommerce.customer_rfm`
 
-**Solutions applied:**
-- Enabled CSV error tolerance and quoted newline handling
-- Accepted auto-detected schema and corrected types during cleaning
-- Used `SAFE_CAST` to prevent query failures
+Segments include:
+- Champions, Loyal Customers, Potential Loyalists, At Risk, Lost, Others
 
----
+### 7) Revenue & LTV Analysis (`06_revenue_ltv.sql`)
+This step creates business-ready tables used for reporting and BI:
+- Monthly revenue KPIs (revenue, orders, AOV, ARPU)
+- Customer value tiers (Top 1/5/20% and wholesale-like flag)
+- Revenue concentration (Pareto / cumulative revenue share)
+- RFM segment KPIs (revenue share, avg LTV, avg orders, avg recency)
+- Cohort revenue summary (cohort size and revenue per customer)
 
-## 🚀 Next Steps
+## Key Analytical Decisions
+- Raw data is never modified directly; transformations are applied to derived tables.
+- Missing `CustomerID` rows are excluded at the analysis layer to preserve ingestion integrity.
+- Returns are excluded from the clean analytical table to avoid distorting revenue-based metrics.
+- LTV is treated as a historical proxy (observed revenue), not a predictive model.
 
-- RFM segmentation
-- Cohort analysis by first purchase month
-- Revenue concentration analysis
-- Interactive BI dashboard
+## Challenges and Resolutions
+- BigQuery ingestion errors caused by malformed CSV rows and quoted newlines in text fields.
+- Schema inconsistencies and type inference issues during auto-detection.
+- Mitigations:
+  - Enabled quoted newline handling and appropriate ingestion tolerance.
+  - Used `SAFE_CAST` and staged cleaning to prevent query failures and enforce consistent types.
 
----
+## How to Reproduce
+1. Load the raw dataset into BigQuery as `ecommerce.online_retail_raw`.
+2. Execute SQL scripts in order:
+   - `01_data_exploration.sql`
+   - `02_data_cleaning.sql`
+   - `03_customer_metrics.sql`
+   - `04_cohort_analysis.sql`
+   - `05_rfm_segmentation.sql`
+   - `06_revenue_ltv.sql`
 
-## 📌 Final Notes
+## Tableau (Planned)
+A Tableau Public dashboard will be connected to the Step 06 tables (monthly KPIs, cohort performance, and RFM KPIs) to visualize retention, segmentation, and revenue concentration.
 
-This project was designed to simulate a **real-world e-commerce analytics task**, focusing on:
-- realistic data quality issues
-- business-driven cleaning decisions
-- scalable SQL workflows
-- clear documentation and reproducibility
+## Next Deliverables
+- Tableau Public dashboard (retention heatmap, revenue trends, RFM segment KPIs)
+- Final executive summary with insights and recommended retention/reactivation actions
+
