@@ -1,0 +1,15 @@
+-- 00_setup: Create a working raw copy
+-- Source table (ingested from CSV / original dataset): online_retail_raw
+-- Working raw table used as the single source of truth for the pipeline: ecommerce_raw_00
+
+CREATE OR REPLACE TABLE `ecommerce-customer-analysis.ecommerce.ecommerce_raw_00` AS
+SELECT *
+FROM `ecommerce-customer-analysis.ecommerce.online_retail_raw`;
+
+-- Quick schema & row sanity check
+SELECT
+  COUNT(*) AS rows_total,
+  COUNTIF(Quantity < 0) AS rows_returns,
+  MIN(DATE(TIMESTAMP(InvoiceDate))) AS min_date,
+  MAX(DATE(TIMESTAMP(InvoiceDate))) AS max_date
+FROM `ecommerce-customer-analysis.ecommerce.ecommerce_raw_00`;
