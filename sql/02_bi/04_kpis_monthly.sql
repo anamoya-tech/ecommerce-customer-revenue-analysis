@@ -1,30 +1,55 @@
--- 02_bi/04_kpis_monthly.sql
--- Monthly KPI table for BI/Tableau (includes scale standardization)
-
 CREATE OR REPLACE TABLE `ecommerce-customer-analysis.ecommerce.ecommerce_bi_01_kpis_monthly` AS
+WITH base AS (
+  SELECT
+    EXTRACT(YEAR FROM InvoiceDate) AS year,
+    EXTRACT(MONTH FROM InvoiceDate) AS month_num,
+    CustomerID,
+    InvoiceNo,
+    Quantity,
+    UnitPrice,
+    Quantity * UnitPrice AS line_revenue
+  FROM `ecommerce-customer-analysis.ecommerce.ecommerce_clean_01_transactions`
+  WHERE CustomerID IS NOT NULL
+),
+
+monthly AS (
+  SELECT
+    year,
+    month_num,
+
+    -- Revenue
+    SUM(IF(Quantity > 0, line_revenue, 0)) AS gross_revenue,
+    ABS(SUM(IF(Quantity < 0, line_revenue, 0))) AS returns_value,
+
+    -- Orders & customers (purchases only)
+    COUNT(DISTINCT IF(Quantity > 0, InvoiceNo, NULL)) AS orders,
+    COUNT(DISTINCT IF(Quantity > 0, CustomerID, NULL)) AS active_customers
+  FROM base
+  GROUP BY 1,2
+)
+
 SELECT
-  month,
+  year,
+  month_num,
 
-  -- Revenue in minor units (raw)
-  SUM(net_revenue_month) AS net_revenue_raw,
-  SUM(gross_revenue_month) AS gross_revenue_raw,
-  SUM(returns_value_month) AS returns_value_raw,
+  gross_revenue,
+  returns_value,
 
-  -- Revenue standardized (assumed minor units -> major units)
-  SUM(net_revenue_month) / 100.0 AS net_revenue,
-  SUM(gross_revenue_month) / 100.0 AS gross_revenue,
-  SUM(returns_value_month) / 100.0 AS returns_value,
+  -- North Star
+  gross_revenue - returns_value AS net_revenue,
 
-  COUNT(DISTINCT CustomerID) AS active_customers,
-  SUM(orders_month) AS orders,
+  -- Return rate (value)
+  SAFE_DIVIDE(returns_value, gross_revenue) AS return_rate_value,
 
-  SAFE_DIVIDE(SUM(net_revenue_month) / 100.0, SUM(orders_month)) AS aov,
-  SAFE_DIVIDE(SUM(net_revenue_month) / 100.0, COUNT(DISTINCT CustomerID)) AS arpu,
+  orders,
+  active_customers,
 
-  SAFE_DIVIDE(
-    ABS(SUM(returns_value_month) / 100.0),
-    (SUM(gross_revenue_month) / 100.0)
-  ) AS return_rate_value
-FROM `ecommerce-customer-analysis.ecommerce.ecommerce_clean_03_customers_monthly`
-GROUP BY month
-ORDER BY month;
+  -- Value metrics
+  SAFE_DIVIDE(gross_revenue - returns_value, orders) AS aov,
+  SAFE_DIVIDE(gross_revenue - returns_value, active_customers) AS arpu,
+
+  -- Month label for Tableau
+  FORMAT_DATE('%b', DATE(year, month_num, 1)) AS month_en
+
+FROM monthly
+ORDER BY year, month_num;
