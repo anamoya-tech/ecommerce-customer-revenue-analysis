@@ -3,9 +3,9 @@
 ## Project Overview
 This project analyzes historical e-commerce transaction data to identify the **key drivers of revenue growth** in an online retail business.
 
-The analysis follows a **fully reproducible, SQL-first pipeline in BigQuery**, ending with a **BI-ready monthly KPI table** connected directly to Tableau for executive reporting.
+The analysis follows a **fully reproducible, SQL-first pipeline in BigQuery**, ending with a **BI-ready monthly KPI table** connected directly to **Tableau** for executive reporting.
 
-During development, the project was intentionally **restarted from raw data** after identifying conceptual and data consistency issues in the initial approach.  
+During development, the project was intentionally **rebuilt from raw transactional data** after identifying conceptual and data consistency issues in an earlier approach.  
 The original README and SQL scripts are preserved under the `/old` folder for full traceability.
 
 ---
@@ -13,7 +13,7 @@ The original README and SQL scripts are preserved under the `/old` folder for fu
 ## Business Context (Hypothetical)
 The stakeholder is a **Head of E-commerce / General Manager** of a UK-based online retailer.
 
-The business objective is to understand **what drove revenue performance in 2011** in order to inform strategic priorities for the following year.
+The objective is to understand **what factors drove revenue performance in 2011** in order to inform strategic priorities for the following year.
 
 ---
 
@@ -21,7 +21,7 @@ The business objective is to understand **what drove revenue performance in 2011
 **Between January and November 2011, is revenue growth primarily driven by:**
 - an increase in **active customers**,
 - a higher number of **orders**, or
-- higher **customer/order value** (AOV / ARPU)?
+- higher **customer or order value** (AOV / ARPU)?
 
 **Specific:** Revenue drivers  
 **Measurable:** Revenue, customers, orders, AOV, ARPU  
@@ -37,7 +37,7 @@ The business objective is to understand **what drove revenue performance in 2011
 - **December 2011 explicitly excluded**
 
 **Reason for exclusion:**  
-December 2011 is a **partial month** in the dataset and shows **abnormally high return behavior**, which would bias monthly KPI comparisons (especially return rate metrics).
+December 2011 is a **partial month** in the dataset and shows **abnormally high return behavior**, which would bias monthly KPI comparisons (particularly return-related metrics).
 
 All SQL logic and Tableau visualizations **strictly reflect Jan–Nov 2011 only**.
 
@@ -54,7 +54,7 @@ Net Revenue is treated as the **single North Star metric** across all layers (SQ
 
 ---
 
-## Why the Project Was Restarted
+## Why the Project Was Rebuilt
 
 ### Issues Identified During Early Validation
 Initial exploratory analysis and sanity checks revealed multiple inconsistencies:
@@ -63,10 +63,10 @@ Initial exploratory analysis and sanity checks revealed multiple inconsistencies
 - BI-level corrections masking upstream data issues
 
 ### Root Cause
-The original pipeline **filtered out negative quantities (`Quantity < 0`)**, effectively analyzing **gross revenue only**, while KPIs were being interpreted as **net revenue**.
+The original pipeline filtered out negative quantities (`Quantity < 0`), effectively analyzing **gross revenue only**, while KPIs were interpreted as **net revenue**.
 
 ### Decision
-The pipeline was rebuilt **from raw transactional data** to:
+The pipeline was rebuilt from raw transactional data to:
 - Preserve returns correctly
 - Redefine KPIs with full transparency
 - Enforce a **single source of truth** across SQL and BI
@@ -89,11 +89,13 @@ The original approach remains available under `/old` for traceability.
 - `ecommerce_clean_01_transactions`
 - `ecommerce_clean_02_orders`
 - `ecommerce_clean_03_customers_monthly`  
-  (SQL scripts under `sql/01_clean/`)
+
+(SQL scripts under `sql/01_clean/`)
 
 ### BI Layer
 - `ecommerce_bi_01_kpis_monthly`  
-  (SQL script under `sql/02_bi/`)
+
+(SQL script under `sql/02_bi/04_kpis_monthly.sql`)
 
 This table contains **one row per month (monthly aggregation)** and serves as the **only data source for Tableau**.
 
@@ -107,13 +109,13 @@ Sum of `(Quantity × UnitPrice)` for `Quantity > 0`
 ### Returns Value
 Total value of returns:
 - Sum of `(Quantity × UnitPrice)` where `Quantity < 0`
-- Converted to **absolute (positive) value** at the BI layer
+- Represented as an **absolute (positive) value**
 
 ### Net Revenue (North Star)
 Net Revenue = Gross Revenue − Returns Value
 
 ### Orders
-Number of **unique invoices** with at least one line where `Quantity > 0`  
+Number of **unique invoices** with at least one purchase line (`Quantity > 0`)  
 (Return credit notes are excluded)
 
 ### Active Customers
@@ -153,12 +155,12 @@ Before building dashboards, KPIs were **validated individually** in Tableau at a
 - Returns Value
 - Return Rate Value
 
-This revealed:
-- Returns Value must be represented as **positive**
-- Return Rate must be calculated using **Gross Revenue**, not Net Revenue
-- Orders must exclude credit notes by definition
+This validation confirmed:
+- Returns must be represented as **positive values**
+- Return Rate must use **Gross Revenue** as the denominator
+- Orders and Active Customers must reflect **purchases only**
 
-All corrections were applied **in SQL**, not in Tableau, reinforcing the principle of **fixing logic upstream**.
+All corrections were applied **in SQL**, reinforcing the principle of **fixing logic upstream**.
 
 ---
 
@@ -180,21 +182,21 @@ Structure:
 
 A small insights panel summarizes key findings without overloading the visuals.
 
-Dashboard workbooks and screenshots are stored under `/dashboards`.
+Dashboard screenshots are stored under `/dashboards`.
 
 ---
 
 ## Key Insights (Jan–Nov 2011)
 - Net Revenue accelerates strongly in **September–November**
 - Growth aligns with rising **Active Customers** and **Orders** (volume-led)
-- **AOV and ARPU remain relatively stable**, suggesting value-based drivers are secondary
+- **AOV and ARPU remain relatively stable**, indicating value-based drivers are secondary
 
 ### Executive Conclusion
 **Revenue growth in 2011 (Jan–Nov) is primarily driven by increased customer and order volume, while value-based metrics (AOV and ARPU) remain relatively stable.**
+<img width="893" height="716" alt="image" src="https://github.com/user-attachments/assets/784eb3e5-fcd6-464f-a1c9-f6d2734e7519" />
 
 In simple terms:  
 **Growth came more from volume than from value.**
-<img width="1000" height="800" alt="Executive Revenue Overview – 2011 (Jan–Nov)" src="https://github.com/user-attachments/assets/6406a91a-1757-4069-8fc2-5567d2ade644" />
 
 ---
 
@@ -202,11 +204,8 @@ In simple terms:
 
 ### Currency
 The dataset does not explicitly specify transaction currency.  
-Based on dataset origin, price distributions, and magnitude checks, values are treated as **GBP**.  
+Based on dataset origin and sanity checks, values are treated as **GBP**.  
 No currency symbol is shown in the dashboard to avoid introducing unverified assumptions.
-
-### Monetary Scale
-Revenue values were stored in minor units (×100) and standardized in the BI layer.
 
 ### Data Limitations
 - No product cost data → profitability analysis out of scope
@@ -235,70 +234,14 @@ sql/
 
 ---
 
-## Next Steps
+Potential Future Analyses
 
-### 1. Cohort-Based Retention Analysis
-Analyze customer retention over time by building monthly acquisition cohorts.
+Cohort-based customer retention analysis
 
-**Objective:**
-- Understand whether revenue growth is supported by improved retention or primarily driven by new customer acquisition.
+RFM segmentation for customer value profiling
 
-**Approach:**
-- Assign customers to cohorts based on their first purchase month.
-- Track repeat purchase behavior across subsequent months.
-- Visualize retention curves and cohort heatmaps.
+Product-level revenue and return drivers
 
----
+Country-level performance analysis
 
-### 2. RFM Segmentation
-Segment customers based on **Recency, Frequency, and Monetary value** to identify behavioral patterns.
-
-**Objective:**
-- Distinguish between high-value, at-risk, and low-engagement customers.
-- Support targeted marketing and CRM strategies.
-
-**Approach:**
-- Calculate RFM scores using transactional data.
-- Classify customers into meaningful segments.
-- Analyze revenue contribution by segment.
-
----
-
-### 3. Product-Level Revenue Drivers
-Extend the analysis to identify which products drive revenue and returns.
-
-**Objective:**
-- Determine whether revenue growth is concentrated in specific products or categories.
-- Understand return behavior at the product level.
-
-**Approach:**
-- Aggregate revenue and return metrics by product.
-- Identify high-revenue, high-return products.
-- Highlight opportunities for assortment optimization.
-
----
-
-### 4. Geographic Revenue Analysis
-Analyze revenue and order behavior by country.
-
-**Objective:**
-- Identify top-performing and underperforming markets.
-- Detect differences in return rates and customer behavior by region.
-
-**Approach:**
-- Aggregate KPIs by country.
-- Compare revenue, orders, and return rates across geographies.
-- Surface markets with growth potential or operational risk.
-
----
-
-### 5. Profitability Analysis (If Cost Data Becomes Available)
-Extend the analysis from revenue to profitability.
-
-**Objective:**
-- Shift focus from top-line growth to sustainable, profitable growth.
-
-**Approach:**
-- Incorporate product cost and margin data.
-- Recalculate KPIs at the profit level.
-- Identify customers, products, and markets driving profit rather than revenue.
+Profitability analysis if cost data becomes available
